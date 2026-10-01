@@ -6,10 +6,12 @@ import { useSearchParams } from "next/navigation";
 import { FilterBar, type Filters } from "@/components/features/filter-bar";
 import { RequestTable } from "@/components/features/request-table";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
+import { fetchAllRequests, exportRequestsToExcel, exportRequestsToPdf } from "@/lib/export-requests";
 import type { Company, AppUser, FinancialRequest } from "@/lib/types";
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 
 export default function SolicitacoesPage() {
   return (
@@ -21,6 +23,7 @@ export default function SolicitacoesPage() {
 
 function SolicitacoesContent() {
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [filters, setFilters] = React.useState<Filters>(() => ({
     status: searchParams.get("status") || undefined,
   }));
@@ -31,6 +34,7 @@ function SolicitacoesContent() {
   const [loading, setLoading] = React.useState(true);
   const [page, setPage] = React.useState(1);
   const [count, setCount] = React.useState(0);
+  const [exporting, setExporting] = React.useState<"excel" | "pdf" | null>(null);
   const pageSize = 20;
 
   const mineOnly = searchParams.get("mine") === "1";
@@ -52,14 +56,21 @@ function SolicitacoesContent() {
     })();
   }, []);
 
+  // Compartilhado entre a listagem e a exportação: garante que o arquivo
+  // exportado contenha exatamente as linhas que a tela está filtrando.
+  const buildParams = React.useCallback(() => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => v && params.set(k, v));
+    if (search) params.set("search", search);
+    if (mineOnly) params.set("mine", "1");
+    if (assignedOnly) params.set("assigned", "1");
+    return params;
+  }, [filters, search, mineOnly, assignedOnly]);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([k, v]) => v && params.set(k, v));
-      if (search) params.set("search", search);
-      if (mineOnly) params.set("mine", "1");
-      if (assignedOnly) params.set("assigned", "1");
+      const params = buildParams();
       params.set("page", String(page));
       params.set("page_size", String(pageSize));
 
@@ -73,11 +84,33 @@ function SolicitacoesContent() {
     } finally {
       setLoading(false);
     }
-  }, [filters, search, page, mineOnly, assignedOnly]);
+  }, [buildParams, page]);
 
   React.useEffect(() => {
     load();
   }, [load]);
+
+  async function handleExport(format: "excel" | "pdf") {
+    setExporting(format);
+    try {
+      const rows = await fetchAllRequests(buildParams());
+      if (rows.length === 0) {
+        toast({ title: "Nada para exportar", description: "Nenhuma solicitação atende aos filtros atuais.", variant: "error" });
+        return;
+      }
+      if (format === "excel") await exportRequestsToExcel(rows);
+      else await exportRequestsToPdf(rows);
+      toast({ title: `${rows.length} solicitação(ões) exportada(s)`, variant: "success" });
+    } catch (err) {
+      toast({
+        title: "Não foi possível exportar",
+        description: err instanceof Error ? err.message : "Tente novamente em instantes.",
+        variant: "error",
+      });
+    } finally {
+      setExporting(null);
+    }
+  }
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
 
@@ -85,16 +118,36 @@ function SolicitacoesContent() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-[1400px]">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">{title}</h1>
           <p className="text-sm text-neutral-500 mt-1">{count} solicitação(ões) encontrada(s)</p>
         </div>
-        <Link href="/solicitacoes/nova">
-          <Button>
-            <PlusCircle className="h-4 w-4" /> Nova solicitação
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => handleExport("excel")}
+            disabled={exporting !== null || count === 0}
+            title="Baixa uma planilha com todas as solicitações do filtro atual"
+          >
+            {exporting === "excel" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            Exportar Excel
           </Button>
-        </Link>
+          <Button
+            variant="outline"
+            onClick={() => handleExport("pdf")}
+            disabled={exporting !== null || count === 0}
+            title="Baixa um PDF com todas as solicitações do filtro atual"
+          >
+            {exporting === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            Exportar PDF
+          </Button>
+          <Link href="/solicitacoes/nova">
+            <Button>
+              <PlusCircle className="h-4 w-4" /> Nova solicitação
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-2">
