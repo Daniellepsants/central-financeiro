@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { AUTHORIZATION_RESPONSIBLES } from "./types";
 
+/**
+ * Tamanho mínimo de senha aceito pelo sistema.
+ *
+ * Precisa acompanhar o GOTRUE_PASSWORD_MIN_LENGTH configurado no Supabase.
+ * Se os dois divergirem, a tela valida uma regra e o servidor aplica outra,
+ * e o usuário leva um erro que a interface disse que não existia.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+
 // O título é gerado automaticamente no servidor a partir do tipo de
 // solicitação e do nome do cliente (ver app/api/requests/route.ts), então
 // não é mais um campo obrigatório vindo do cliente — se enviado, é ignorado.
@@ -52,7 +61,7 @@ export const createUserSchema = z.object({
   email: z.string().email(),
   full_name: z.string().min(2),
   role: z.enum(["solicitante", "analista_financeiro", "administrador"]),
-  password: z.string().min(6).optional(),
+  password: z.string().min(PASSWORD_MIN_LENGTH).optional(),
 });
 
 export const updateUserSchema = z.object({

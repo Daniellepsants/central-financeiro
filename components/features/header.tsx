@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, LogOut, ChevronDown } from "lucide-react";
+import { Search, LogOut, ChevronDown, UserCog } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/ui/avatar";
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownSeparator, DropdownLabel } from "@/components/ui/dropdown";
@@ -60,6 +60,9 @@ export function Header({ user }: { user: AppUser }) {
           <DropdownContent className="w-56">
             <DropdownLabel>{user.email}</DropdownLabel>
             <DropdownSeparator />
+            <DropdownItem onClick={() => router.push("/conta")}>
+              <UserCog className="h-4 w-4" /> Minha conta
+            </DropdownItem>
             <DropdownItem onClick={handleLogout} className="text-red-600">
               <LogOut className="h-4 w-4" /> Sair
             </DropdownItem>

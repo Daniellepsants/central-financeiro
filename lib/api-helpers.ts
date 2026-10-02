@@ -13,7 +13,8 @@ export async function getAuthedUser(): Promise<
   if (!authUser) return null;
 
   const { data: profile } = await supabase.from("users").select("*").eq("id", authUser.id).single();
-  if (!profile) return null;
+  // Perfil desativado conta como deslogado; o middleware encerra a sessão.
+  if (!profile || profile.active === false) return null;
 
   return { user: profile as AppUser, supabase };
 }

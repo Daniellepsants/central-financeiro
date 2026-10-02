@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +25,7 @@ function LoginForm() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const desativado = searchParams.get("desativado") === "1";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,6 +62,11 @@ function LoginForm() {
           <p className="text-sm text-neutral-500">Central de solicitações financeiras</p>
         </div>
 
+        {desativado && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Esta conta foi desativada pelo administrador. Se acha que é um engano, fale com o financeiro.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm space-y-4">
           <div>
             <Label htmlFor="email">E-mail</Label>
@@ -74,7 +81,14 @@ function LoginForm() {
             />
           </div>
           <div>
-            <Label htmlFor="password">Senha</Label>
+            <div className="mb-1.5 flex items-baseline justify-between">
+              <Label htmlFor="password" className="mb-0">
+                Senha
+              </Label>
+              <Link href="/esqueci-senha" className="text-xs text-primary-600 hover:text-primary-700">
+                Esqueci minha senha
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"
